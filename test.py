@@ -36,7 +36,7 @@ app.add_middleware(
 
 # Constants
 TRACKING_DIR = "tracking"
-DOMAIN = "https://9725-2409-40f0-5058-147-fc22-8a70-29d7-2c94.ngrok-free.app"  # Replace with your domain
+DOMAIN = "https://email-sales-backend.onrender.com"  # Replace with your domain
 os.makedirs(TRACKING_DIR, exist_ok=True)
 
 # Configure logging
