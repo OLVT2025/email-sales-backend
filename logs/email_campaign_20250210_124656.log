@@ -1,0 +1,6 @@
+2025-02-10 12:47:09,678 - ERROR - ❌ Error cleaning JSON: Expecting ',' delimiter: line 3 column 457 (char 533)
+Raw text: {
+  "subject": "Innovative Software Solutions for Educational Institutions",
+  "body": "Dear Venky,\n\nI hope this email finds you well.\n\nMy name is Nitin, and I am with Orange League Ventures pvt ltd. We provide innovative software solutions designed specifically for the education industry.\n\nWe understand the challenges faced by educational institutions today, from managing complex administrative tasks to engaging students in a rapidly changing technological landscape.\n\nOur software platform addresses these pain points "by":\n\n* Streamlining administrative processes\n* Enhancing student engagement\n* Improving communication between teachers, students, and parents\n* Providing real-time data for better decision-making\n\nWe have a team of experienced professionals who are passionate about improving the education sector. We would be delighted to schedule a call to discuss how our software can benefit your institution.\n\nPlease let me know if you are interested in learning more.\n\nThank you for your time and consideration.\n\nSincerely,\nNitin"
+}
+2025-02-10 12:47:13,966 - INFO - Email sent to venkateswarlu@olvtechnologies.com

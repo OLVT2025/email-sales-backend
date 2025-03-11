@@ -1,0 +1,12 @@
+2025-02-07 16:05:30,683 - ERROR - Campaign error: 'Name'
+2025-02-07 16:05:59,523 - ERROR - Campaign error: 'Name'
+2025-02-07 16:07:08,618 - INFO - Email sent to venkateswarlu@olvtechnologies.com
+2025-02-07 16:07:14,785 - ERROR - ❌ JSON Cleaning Error: Could not extract subject or body from JSON
+2025-02-07 16:07:18,727 - INFO - Email sent to nitin@olvtechnologies.com
+2025-02-07 16:11:12,783 - ERROR - ❌ JSON Cleaning Error: Could not extract subject or body from JSON
+2025-02-07 16:11:16,930 - INFO - Email sent to venkateswarlu@olvtechnologies.com
+2025-02-07 16:11:22,700 - ERROR - ❌ JSON Cleaning Error: Could not extract subject or body from JSON
+2025-02-07 16:11:26,663 - INFO - Email sent to 223004091@sastra.ac.in
+2025-02-07 16:14:45,854 - ERROR - Campaign error: 'Name'
+2025-02-07 16:16:33,856 - ERROR - ❌ JSON Cleaning Error: Could not extract subject or body from JSON
+2025-02-07 16:16:38,030 - INFO - Email sent to venkateswarlu@olvtechnologies.com

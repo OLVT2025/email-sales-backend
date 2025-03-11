@@ -1,0 +1,24 @@
+2025-02-10 13:12:21,185 - ERROR - Failed to parse JSON response: Invalid control character at: line 3 column 36 (char 113)
+Raw text: {
+    "subject": "Unlock Educational Excellence with Orange League Ventures",
+    "body": "Dear [Recipient Name],
+
+    My name is Nitin, and I'm reaching out from Orange League Ventures, a leading provider of software solutions for the education industry.
+
+    I understand the challenges you face in delivering high-quality education within the constraints of budgets and resources. Our solutions are specifically designed to address these pain points, empowering educators and institutions with:
+
+    * **Personalized Learning Experiences:** Tailored content and assessments to meet individual student needs
+    * **Enhanced Student Engagement:** Gamification and interactive tools to make learning more engaging
+    * **Improved Teacher Productivity:** Time-saving tools for lesson planning, grading, and communication
+    * **Data-Driven Insights:** Real-time analytics to monitor student progress and inform decision-making
+
+    Our team of education experts has decades of experience and is committed to working closely with you to tailor our solutions to meet your specific requirements.
+
+    I would welcome the opportunity to schedule a brief call to discuss how our software can help you unlock greater educational outcomes. Please let me know when would be a convenient time.
+
+    Thank you for your time and consideration.
+
+    Best regards,
+    Nitin"
+}
+2025-02-10 13:12:25,078 - INFO - Email sent to venkateswarlu@olvtechnologies.com

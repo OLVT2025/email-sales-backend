@@ -1,0 +1,4 @@
+2025-02-06 14:31:58,209 - ERROR - ❌ JSON Decode Error: Invalid control character at: line 3 column 32 (char 135)
+2025-02-06 14:31:58,210 - ERROR - Error generating email content: 'NoneType' object has no attribute 'get'
+2025-02-06 14:32:02,404 - INFO - Email sent to venkateswarlu@olvtechnologies.com
+2025-02-06 14:32:02,405 - INFO - Sent to education

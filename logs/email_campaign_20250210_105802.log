@@ -1,0 +1,2 @@
+2025-02-10 12:26:11,357 - ERROR - Error generating email content: AIColdEmailAgent.clean_and_extract_json() takes 1 positional argument but 2 were given
+2025-02-10 12:26:16,230 - INFO - Email sent to venkateswarlu@olvtechnologies.com

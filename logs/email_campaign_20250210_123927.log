@@ -1,0 +1,21 @@
+2025-02-10 12:40:05,519 - ERROR - ❌ Error cleaning JSON: Expecting value: line 3 column 11 (char 73)
+Raw text: {
+  "subject": "Empowering Education with Software Solutions",
+  "body": `Hi Sunke,
+
+My name is Nitin and I"m the founder of Orange League Ventures pvt ltd. We provide software services to the education industry.
+
+I understand that the education sector is facing challenges such as outdated systems, inefficient processes, and limited access to personalized learning. We believe our software solutions can address these pain points and enhance the learning experience for both students and educators.
+
+Our suite of services "includes":
+
+* **Learning Management "Systems":** To streamline course administration, deliver engaging content, and track student progress.
+* **Student Information "Systems":** To manage student data, facilitate communication, and provide personalized support.
+* **Educational "Apps":** To make learning accessible anytime, anywhere, and cater to diverse learning styles.
+
+We"re keen on exploring how our solutions can benefit your institution. Can we schedule a quick call to discuss your specific requirements?
+
+Best regards,
+Nitin`
+}
+2025-02-10 12:40:10,202 - INFO - Email sent to venkateswarlu@olvtechnologies.com

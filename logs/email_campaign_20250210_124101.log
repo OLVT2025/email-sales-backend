@@ -1,0 +1,33 @@
+2025-02-10 12:41:21,303 - ERROR - ❌ Error cleaning JSON: Invalid control character at: line 3 column 34 (char 122)
+Raw text: {
+  "subject": "Unlocking Innovation in Education with Cutting-Edge Software Solutions",
+  "body": "Dear [Recipient Name],
+
+I hope this email finds you well.
+
+My name is Nitin, and I am the [Your Title] at Orange League Ventures Pvt. Ltd., a leading provider of software solutions for the education industry.
+
+I understand that in today"s rapidly evolving education landscape, institutions are facing immense challenges in delivering engaging and effective learning experiences. These challenges "include":
+
+* Outdated and inefficient technology
+* Lack of personalized learning pathways
+* Difficulty in assessing student progress
+
+We believe that innovative software solutions can address these pain points and revolutionize the way education is delivered. With our expertise in enterprise software development, we have crafted a suite of products designed to empower educational institutions "with":
+
+* Seamless online learning platforms
+* Personalized educational experiences
+* Advanced data analytics for informed decision-making
+
+Our solutions are tailored to meet the specific needs of educational institutions of all sizes. We offer flexible deployment options, including cloud-based and on-premise, to ensure seamless integration into your existing infrastructure.
+
+I would be delighted to schedule a brief call to discuss how our software solutions can help your institution overcome its challenges and unlock new opportunities. Please let me know when you might be available.
+
+Thank you for your time and consideration.
+
+Best regards,
+Nitin
+[Your Title]
+Orange League Ventures Pvt. Ltd."
+}
+2025-02-10 12:41:25,269 - INFO - Email sent to venkateswarlu@olvtechnologies.com

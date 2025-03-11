@@ -1,0 +1,2 @@
+2025-02-06 11:51:51,497 - ERROR - Error generating email content: name 're' is not defined
+2025-02-06 11:51:54,362 - ERROR - Failed to send email to venkateswarlu@olvtechnologies.com: (535, b'5.7.8 Username and Password not accepted. For more information, go to\n5.7.8  https://support.google.com/mail/?p=BadCredentials d9443c01a7336-21f36896831sm4406905ad.215 - gsmtp')

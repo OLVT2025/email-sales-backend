@@ -1,0 +1,4 @@
+2025-02-06 12:57:11,567 - ERROR - ❌ JSON Decode Error: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)
+2025-02-06 12:57:11,567 - ERROR - Error generating email content: 'NoneType' object has no attribute 'get'
+2025-02-06 12:57:15,589 - INFO - Email sent to venkateswarlu@olvtechnologies.com
+2025-02-06 12:57:15,589 - INFO - Sent to education

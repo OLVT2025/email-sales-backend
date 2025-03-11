@@ -1,0 +1,8 @@
+2025-02-07 15:50:02,786 - ERROR - ❌ JSON Cleaning Error: Could not extract subject or body from JSON
+2025-02-07 15:50:07,571 - INFO - Email sent to venkateswarlu@olvtechnologies.com
+2025-02-07 15:50:16,154 - ERROR - ❌ JSON Cleaning Error: Could not extract subject or body from JSON
+2025-02-07 15:50:20,068 - INFO - Email sent to venkateswarlu@olvtechnologies.com
+2025-02-07 15:51:07,579 - INFO - Campaign Summary: Total Emails: 1, Success: 1, Failed: 0
+2025-02-07 15:51:20,075 - INFO - Campaign Summary: Total Emails: 1, Success: 1, Failed: 0
+2025-02-07 15:51:34,443 - INFO - Email sent to venkateswarlu@olvtechnologies.com
+2025-02-07 15:52:34,450 - INFO - Campaign Summary: Total Emails: 1, Success: 1, Failed: 0
