@@ -1093,6 +1093,102 @@ async def get_campaign_metrics(campaign_id: str):
     except Exception as e:
         logger.error(f"Campaign metrics error: {str(e)}")
         return {"error": "Failed to retrieve campaign metrics"}
+
+def get_all_campaigns_from_db():
+    """Get a list of all campaign IDs and their details (including metrics and tracking) from the database."""
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+
+    # Get basic campaign details
+    cursor.execute(
+        """
+        SELECT campaign_id, start_time, end_time, total_processed, successful_sends, failed_sends 
+        FROM campaigns
+        """
+    )
+    campaigns_rows = cursor.fetchall()
+
+    campaigns = []
+    for row in campaigns_rows:
+        campaign_id = row[0]
+        
+        # Get metrics for the campaign
+        cursor.execute("SELECT * FROM metrics WHERE campaign_id = ?", (campaign_id,))
+        metrics_row = cursor.fetchone()
+
+        metrics = {}
+        if metrics_row:
+             metrics = {
+                "open_rate": metrics_row[2],
+                "bounce_rate": metrics_row[3],
+                "reply_rate": metrics_row[4],
+                "unsubscribe_rate": metrics_row[5],
+                "total_opens": metrics_row[6],
+                "total_bounces": metrics_row[7],
+                "total_replies": metrics_row[8],
+                "total_unsubscribes": metrics_row[9],
+            }
+        else:
+            metrics = {
+                 "open_rate":0,
+                "bounce_rate":0,
+                "reply_rate": 0,
+                "unsubscribe_rate": 0,
+                "total_opens": 0,
+                "total_bounces": 0,
+                "total_replies":0,
+                "total_unsubscribes":0
+            }
+
+        # Get tracking details for the campaign
+        cursor.execute("SELECT * FROM tracking WHERE campaign_id = ?", (campaign_id,))
+        tracking_rows = cursor.fetchall()
+
+        tracking = []
+        if tracking_rows:
+             for tracking_row in tracking_rows:
+                tracking.append(
+                    {
+                        "email": tracking_row[2],
+                        "sent_time": tracking_row[3],
+                        "opens": tracking_row[4],
+                        "first_opened": tracking_row[5],
+                        "last_opened": tracking_row[6],
+                        "bounced": tracking_row[7],
+                        "replied": tracking_row[8],
+                        "unsubscribed": tracking_row[9],
+                    }
+                )
+        else:
+            tracking = []
+
+        campaigns.append(
+            {
+                "campaign_id": campaign_id,
+                "start_time": row[1],
+                "end_time": row[2],
+                "total_processed": row[3],
+                "successful_sends": row[4],
+                "failed_sends": row[5],
+                "metrics": metrics,
+                "detailed_tracking": tracking,
+            }
+        )
+
+    conn.close()
+    return campaigns
+
+@app.get("/all-campaigns/")
+async def get_all_campaigns():
+    """API endpoint to get details of all campaigns."""
+    try:
+        all_campaigns_data = get_all_campaigns_from_db()
+        if not all_campaigns_data:
+            return {"message": "No campaigns found."}
+        return all_campaigns_data
+    except Exception as e:
+        logger.error(f"Error fetching all campaigns: {str(e)}")
+        return {"error": "Failed to retrieve campaign details."}
     
 def get_roi_data():
     """Get ROI data from the external website."""
