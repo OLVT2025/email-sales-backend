@@ -1,0 +1,7 @@
+pandas
+openai
+logging
+datetime
+fastapi
+uvicorn
+openpyxl
