@@ -64,56 +64,6 @@ PIXEL_PATH = create_tracking_pixel()
 # --- Database Setup ---
 DATABASE_FILE = "campaign_data.db"
 
-# def initialize_database():
-#     """Create database tables if they don't exist."""
-#     conn = sqlite3.connect(DATABASE_FILE)
-#     cursor = conn.cursor()
-
-#     cursor.execute("""
-#         CREATE TABLE IF NOT EXISTS campaigns (
-#             campaign_id TEXT PRIMARY KEY,
-#             start_time TEXT,
-#             end_time TEXT,
-#             total_processed INTEGER DEFAULT 0,
-#             successful_sends INTEGER DEFAULT 0,
-#             failed_sends INTEGER DEFAULT 0
-#         )
-#     """)
-
-#     cursor.execute("""
-#         CREATE TABLE IF NOT EXISTS metrics (
-#             id INTEGER PRIMARY KEY AUTOINCREMENT,
-#             campaign_id TEXT PRIMARY KEY,
-#             open_rate REAL,
-#             bounce_rate REAL,
-#             reply_rate REAL,
-#             unsubscribe_rate REAL,
-#             total_opens INTEGER DEFAULT 0,
-#             total_bounces INTEGER DEFAULT 0,
-#             total_replies INTEGER DEFAULT 0,
-#             total_unsubscribes INTEGER DEFAULT 0,
-#             FOREIGN KEY (campaign_id) REFERENCES campaigns(campaign_id)
-#         )
-#     """)
-    
-#     cursor.execute("""
-#         CREATE TABLE IF NOT EXISTS tracking (
-#             id INTEGER PRIMARY KEY AUTOINCREMENT,
-#             campaign_id TEXT,
-#             email TEXT,
-#             sent_time TEXT,
-#             opens INTEGER DEFAULT 0,
-#             first_opened TEXT,
-#             last_opened TEXT,
-#             bounced BOOLEAN DEFAULT FALSE,
-#             replied BOOLEAN DEFAULT FALSE,
-#             unsubscribed BOOLEAN DEFAULT FALSE,
-#             FOREIGN KEY (campaign_id) REFERENCES campaigns(campaign_id)
-#         )
-#     """)
-
-#     conn.commit()
-#     conn.close()
 def initialize_database():
     """Create database tables if they don't exist."""
     conn = sqlite3.connect(DATABASE_FILE)
@@ -339,62 +289,15 @@ class EmailTracker:
     def initialize_campaign(self, campaign_id):
         """Initialize tracking for a new campaign"""
         start_time = datetime.now(timezone.utc).isoformat()
-        # campaign_results[campaign_id] = {
-        #     'start_time': datetime.now(timezone.utc).isoformat(),
-        #     'tracking': {},
-        #     'total_sent': 0,
-        #     'metrics': {
-        #         'opens': set(),
-        #         'bounces': set(),
-        #         'replies': set(),
-        #         'unsubscribes': set()
-        #     }
-        # }
         insert_campaign(campaign_id,start_time)
     
     def track_send(self, campaign_id, email):
         """Track when an email is sent"""
-        # if campaign_id not in campaign_results:
-        #     self.initialize_campaign(campaign_id)
-            
-        # if email not in campaign_results[campaign_id]['tracking']:
-        #     campaign_results[campaign_id]['tracking'][email] = {
-        #         'sent_time': datetime.now(timezone.utc).isoformat(),
-        #         'opens': 0,
-        #         'first_opened': None,
-        #         'last_opened': None,
-        #         'bounced': False,
-        #         'replied': False,
-        #         'unsubscribed': False
-        #     }
-        # campaign_results[campaign_id]['total_sent'] += 1
-
         sent_time = datetime.now(timezone.utc).isoformat()
         track_send_in_db(campaign_id, email, sent_time)
         
     def track_open(self, campaign_id, email):
         """Track when an email is opened"""
-        # if campaign_id in campaign_results:
-        #     now = datetime.now(timezone.utc).isoformat()
-        #     if email in campaign_results[campaign_id]['tracking']:
-        #         tracking = campaign_results[campaign_id]['tracking'][email]
-                
-        #         tracking['opens'] += 1
-        #         if not tracking['first_opened']:
-        #             tracking['first_opened'] = now
-                
-        #         tracking['last_opened'] = now
-        #         # tracking['opens'] += 1
-        #         campaign_results[campaign_id]['metrics']['opens'].add(email)
-
-        #         total_sent = campaign_results[campaign_id]['total_sent']
-        #         if total_sent > 0:
-        #             open_rate = (len(campaign_results[campaign_id]['metrics']['opens']) / total_sent) * 100
-        #             campaign_results[campaign_id]['metrics']['open_rate'] = open_rate
-                
-        #         logger.info(f"Updated tracking for {email}: opens={tracking['opens']}, open_rate={open_rate}%")
-        #         self._update_metrics(campaign_id)
-
         now = datetime.now(timezone.utc).isoformat()
         print('121')
         track_open_in_db(campaign_id, email, now)
@@ -404,11 +307,6 @@ class EmailTracker:
 
     def track_bounce(self, campaign_id, email):
         """Track bounced emails"""
-        # if campaign_id in campaign_results:
-        #     campaign_results[campaign_id]['metrics']['bounces'].add(email)
-        #     if email in campaign_results[campaign_id]['tracking']:
-        #         campaign_results[campaign_id]['tracking'][email]['bounced'] = True
-        #     self._update_metrics(campaign_id)
         track_bounce_in_db(campaign_id, email)
         self._update_metrics(campaign_id)
             
@@ -434,18 +332,6 @@ class EmailTracker:
             
     def _update_metrics(self, campaign_id):
         """Update campaign metrics"""
-        # if campaign_id in campaign_results:
-        #     campaign = campaign_results[campaign_id]
-        #     total_sent = campaign['total_sent']
-            
-        #     if total_sent > 0:
-        #         metrics = {
-        #             'open_rate': (len(campaign['metrics']['opens']) / total_sent) * 100,
-        #             'bounce_rate': (len(campaign['metrics']['bounces']) / total_sent) * 100,
-        #             'reply_rate': (len(campaign['metrics']['replies']) / total_sent) * 100,
-        #             'unsubscribe_rate': (len(campaign['metrics']['unsubscribes']) / total_sent) * 100
-        #         }
-        #         campaign['metrics'].update(metrics)
         print('got it 0')
         conn = sqlite3.connect(DATABASE_FILE)
         print('got it 1')
@@ -497,103 +383,9 @@ class AIColdEmailAgent:
         self.sender_password = SENDER_PASSWORD
         self.imap_server = "imap.gmail.com"
 
-    # def generate_email_content(self, industry, name):
-    #     """Generate personalized email content using AI"""
-    #     try:
-    #         # prompt = f'''Generate ONLY a JSON object for a cold email. No other text.
-
-    #         # CONTEXT:
-    #         # - Industry: {industry}
-    #         # - Recipient Name: {name}
-    #         # - Sender: Nitin from Orange League Ventures pvt ltd
-    #         # - Purpose: Offering software services
-    #         # - Style: Professional with clear call to action
-
-    #         # FORMAT:
-    #         # {{
-    #         #     "subject": "Subject line here",
-    #         #     "body": "Email body here\\n\\nBest regards,\\nNitin\\nOrange League Ventures pvt ltd"
-    #         # }}'''
-            
-    #         prompt = f'''Generate ONLY a JSON object for a cold email. No other text.
-
-    #         CONTEXT:
-    #         - Industry: {industry}
-    #         - Recipient Name: {name}
-    #         - Sender: Nitin from Orange League Ventures Pvt Ltd
-    #         - Purpose: Offering software services
-    #         - Style: Professional yet friendly with emojis
-    #         - Framework: Short trigger-based outreach
-    #         - Relevant Trigger: Personalization based on recent activity or news
-    #         - Validation: Highlight a specific challenge or opportunity
-    #         - Value Proposition: Explain how our services address the challenge
-    #         - CTA: Invite to schedule a call or demo
-    #         - Emojis: Include relevant emojis to make the email engaging
-    #         - ROI Details: Include basic ROI calculations specific to the industry and also make changes on FORMAT...get the basic roi details it is enough and i want that give this in better repreaentation without table...after this if they want to to chekck manually about their roi,they can cehck here https://ROI.olvtechnologies.com/ ,add this to check manually and this is mandatory and dont forget about this
-    #         FORMAT:
-    #         -Please incluse my calendlylink https://calendly.com/nitinkatke,where they can book meetings with me and the duration is 15min and 30min..include this also in mail
-    #         -send me the clear mail dont include any in-complete sentences like [...this]
-    #         {{
-    #             "subject": "Subject line with an emoji 🎉",
-    #             "body": "Email body here\\n\\nBest regards,\\nNitin\\nOrange League Ventures pvt ltd"
-    #         }}'''
-
-    #         available_models = genai.list_models()
-    #         # for model in available_models:
-    #         #     print(model.name,'testingg')
-    #         model = genai.GenerativeModel("gemini-1.5-pro-latest")
-    #         response = model.generate_content(prompt)
-    #         content = response.text
-            
-    #         # Clean and parse the response
-    #         content = content.replace("```json", "").replace("```", "").strip()
-    #         json_data = json.loads(content)
-            
-    #         result = {
-    #             "subject": json_data["subject"].strip(),
-    #             "body": json_data["body"].replace("\\n", "\n").strip()
-    #         }
-            
-    #         # Validate the result
-    #         if not result["subject"] or not result["body"]:
-    #             raise ValueError("Empty subject or body")
-                
-    #         logger.info(f"Generated content for {name} in {industry}")
-    #         return result
-
-    #     except Exception as e:
-    #         logger.error(f"Content generation error: {str(e)}")
-    #         return {
-    #             "subject": f"Software Services for {industry} Companies",
-    #             "body": f"Dear {name},\n\nI hope this email finds you well. I wanted to reach out regarding our software services...\n\nBest regards,\nNitin\nOrange League Ventures pvt ltd"
-    #         }
-
     def generate_email_content(self, industry, name):
         """Generate personalized email content using AI with rate limiting"""
         
-        # prompt = f'''Generate ONLY a JSON object for a cold email. No other text.
-
-        # CONTEXT:
-        # - Industry: {industry}
-        # - Recipient Name: {name}
-        # - Sender: Oliva, an AI assistant working with Nitin Katke, the co-founder of Orange League Ventures Pvt Ltd.
-        # - Purpose: Offering software services
-        # - Style: Professional yet friendly with emojis
-        # - Framework: Short trigger-based outreach
-        # - Relevant Trigger: Personalization based on recent activity or news
-        # - Validation: Highlight a specific challenge or opportunity
-        # - Value Proposition: Explain how our services address the challenge
-        # - CTA: Invite to schedule a call or demo
-        # - Emojis: Include relevant emojis to make the email engaging
-        # - ROI Details: Include basic ROI calculations specific to the industry
-        # - Mandatory Link: Check ROI manually here - https://ROI.olvtechnologies.com/
-        # - Calendly Link: Book a 15/30 min meeting - https://calendly.com/nitinkatke
-        # - Don't include incomplete sentences like [mention some recent activity/news related to student engagement/challenges]...give complete sentenced mail and it is mandatory
-
-        # {{
-        #     "subject": "Subject line with an emoji 🎉",
-        #     "body": "Email body here\\n\\nBest regards,\\nNitin\\nOrange League Ventures pvt ltd"
-        # }}'''
         prompt = f"""Generate ONLY a JSON object for a cold email. No other text.
 
         CONTEXT:
@@ -706,8 +498,6 @@ class AIColdEmailAgent:
             # Plain text version
             text_part = MIMEText(body, 'plain')
             
-            # HTML version with tracking pixel and unsubscribe link
-            # Instead of using .replace('\n', '<br>'), let's pre-format the body
             formatted_body = body.replace('\n', '<br>')
 
             # Then use the pre-formatted body in the f-string
@@ -773,261 +563,6 @@ class AIColdEmailAgent:
 
         except Exception as e:
             logger.error(f"Error checking replies: {str(e)}")
-
-
-# @app.post("/send-emails/")
-# async def send_emails(file: UploadFile = File(...), background_tasks: BackgroundTasks = BackgroundTasks()):
-#     """Handle Excel upload and send emails"""
-#     try:
-#         # Generate unique campaign ID
-#         campaign_id = str(uuid.uuid4())
-        
-#         # Read Excel file
-#         file_contents = await file.read()
-#         df = pd.read_excel(BytesIO(file_contents))
-        
-#         # Initialize campaign tracking
-#         email_tracker.initialize_campaign(campaign_id)
-        
-#         # Initialize email agent
-#         email_agent = AIColdEmailAgent()
-        
-#         successful_sends = 0
-#         failed_sends = 0
-        
-#         # Process each row in the Excel file
-#         for _, row in df.iterrows():
-#             try:
-#                 # Generate personalized email content
-#                 email_content = email_agent.generate_email_content(
-#                     industry=row["Industry"],
-#                     name=row["Name"]
-#                 )
-                
-#                 # Send email with tracking
-#                 success = email_agent.send_email(
-#                     to_email=row["Emails"],
-#                     subject=email_content["subject"],
-#                     body=email_content["body"],
-#                     campaign_id=campaign_id
-#                 )
-                
-#                 if success:
-#                     successful_sends += 1
-#                     logger.info(f"Successfully sent email to {row['Emails']}")
-#                 else:
-#                     failed_sends += 1
-#                     logger.error(f"Failed to send email to {row['Emails']}")
-                
-#                 # Add delay to avoid spam detection
-#                 time.sleep(2)
-                
-#             except Exception as e:
-#                 failed_sends += 1
-#                 logger.error(f"Error processing row for {row.get('Emails', 'unknown')}: {str(e)}")
-#                 continue
-        
-#         # Update campaign statistics
-#         campaign_results[campaign_id].update({
-#             'end_time': datetime.now(timezone.utc).isoformat(),
-#             'successful_sends': successful_sends,
-#             'failed_sends': failed_sends,
-#             'total_processed': len(df)
-#         })
-        
-#         # Schedule background tasks
-#         background_tasks.add_task(email_agent.check_replies, campaign_id)
-        
-#         return {
-#             "status": "success",
-#             "campaign_id": campaign_id,
-#             "message": "Email campaign started",
-#             "summary": {
-#                 "total_processed": len(df),
-#                 "successful_sends": successful_sends,
-#                 "failed_sends": failed_sends
-#             }
-#         }
-        
-#     except Exception as e:
-#         logger.error(f"Campaign error: {str(e)}")
-#         return {
-#             "status": "error",
-#             "error": str(e),
-#             "message": "Failed to process email campaign"
-#         }
-
-@app.post("/send-emails/")
-async def send_emails(file: UploadFile = File(...), background_tasks: BackgroundTasks = BackgroundTasks()):
-    """Handle Excel upload and send emails"""
-    try:
-        # Generate unique campaign ID
-        campaign_id = str(uuid.uuid4())
-        
-        # Read Excel file
-        file_contents = await file.read()
-        df = pd.read_excel(BytesIO(file_contents))
-
-        if df.empty:
-            return {
-                "status": "success",
-                "campaign_id": campaign_id,
-                "message": "Excel sheet is empty. No emails sent.",
-                "summary": {
-                    "total_processed": 0,
-                    "successful_sends": 0,
-                    "failed_sends": 0
-                }
-            }
-        
-        # Initialize campaign tracking
-        email_tracker.initialize_campaign(campaign_id)
-        
-        # Initialize email agent
-        email_agent = AIColdEmailAgent()
-        
-        successful_sends = 0
-        failed_sends = 0
-        
-        # Process each row in the Excel file
-        for _, row in df.iterrows():
-            try:
-                # Generate personalized email content
-                email_content = email_agent.generate_email_content(
-                    industry=row["Industry"],
-                    name=row["Name"]
-                )
-                if "Hey {name}" in email_content["subject"]:
-                    email_content["subject"] = email_content["subject"].replace("{name}",row["Name"])
-                
-                # Send email with tracking
-                success = email_agent.send_email(
-                    to_email=row["Emails"],
-                    subject=email_content["subject"],
-                    body=email_content["body"],
-                    campaign_id=campaign_id
-                )
-                
-                if success:
-                    successful_sends += 1
-                    logger.info(f"Successfully sent email to {row['Emails']}")
-                else:
-                    failed_sends += 1
-                    logger.error(f"Failed to send email to {row['Emails']}")
-                
-                # Add delay to avoid spam detection
-                time.sleep(2)
-                
-            except Exception as e:
-                failed_sends += 1
-                logger.error(f"Error processing row for {row.get('Emails', 'unknown')}: {str(e)}")
-                continue
-        
-        # Update campaign statistics
-        update_campaign_stats(
-            campaign_id=campaign_id,
-            end_time=datetime.now(timezone.utc).isoformat(),
-            successful_sends=successful_sends,
-            failed_sends=failed_sends,
-            total_processed=len(df)
-        )
-        
-        # Schedule background tasks
-        background_tasks.add_task(email_agent.check_replies, campaign_id)
-        
-        return {
-            "status": "success",
-            "campaign_id": campaign_id,
-            "message": "Email campaign started",
-            "summary": {
-                "total_processed": len(df),
-                "successful_sends": successful_sends,
-                "failed_sends": failed_sends
-            }
-        }
-        
-    except Exception as e:
-        logger.error(f"Campaign error: {str(e)}")
-        return {
-            "status": "error",
-            "error": str(e),
-            "message": "Failed to process email campaign"
-        }
-
-# @app.get("/track/{campaign_id}/{email_b64}")
-# async def track_open(campaign_id: str, email_b64: str):
-#     """Track email opens"""
-#     try:
-#         email = base64.urlsafe_b64decode(email_b64.encode()).decode()
-#         logger.info(f"Tracking open for campaign {campaign_id}, email {email}")
-#         email_tracker.track_open(campaign_id, email)
-#         # Return tracking pixel with proper headers
-#         return FileResponse(
-#             PIXEL_PATH,
-#             media_type="image/png",
-#             headers={
-#                 "Cache-Control": "no-cache, no-store, must-revalidate",
-#                 "Pragma": "no-cache",
-#                 "Expires": "0"
-#             }
-#         )
-#     except Exception as e:
-#         logger.error(f"Tracking error: {str(e)}")
-#         return {"error": "Tracking failed"}
-
-# @app.get("/unsubscribe/{campaign_id}/{email_b64}")
-# async def unsubscribe(campaign_id: str, email_b64: str):
-#     """Handle unsubscribe requests"""
-#     try:
-#         email = base64.urlsafe_b64decode(email_b64.encode()).decode()
-#         email_tracker.track_unsubscribe(campaign_id, email)
-#         return HTMLResponse("<h1>You have been successfully unsubscribed.</h1>")
-#     except Exception as e:
-#         logger.error(f"Unsubscribe error: {str(e)}")
-#         return {"error": "Unsubscribe failed"}
-
-# @app.get("/campaign-metrics/{campaign_id}")
-# async def get_campaign_metrics(campaign_id: str):
-#     """Get campaign metrics"""
-#     if campaign_id not in campaign_results:
-#         return {"error": "Campaign not found"}
-        
-#     campaign = campaign_results[campaign_id]
-#     metrics = campaign['metrics']
-    
-#     return {
-#         "campaign_id": campaign_id,
-#         "total_sent": campaign['total_sent'],
-#         "metrics": {
-#             "open_rate": round(metrics.get('open_rate', 0), 2),
-#             "bounce_rate": round(metrics.get('bounce_rate', 0), 2),
-#             "reply_rate": round(metrics.get('reply_rate', 0), 2),
-#             "unsubscribe_rate": round(metrics.get('unsubscribe_rate', 0), 2),
-#             "total_opens": len(metrics['opens']),
-#             "total_bounces": len(metrics['bounces']),
-#             "total_replies": len(metrics['replies']),
-#             "total_unsubscribes": len(metrics['unsubscribes'])
-#         },
-#         "detailed_tracking": campaign['tracking']
-#     }
-
-# def get_roi_data():
-#     url = "https://orangeleague.github.io/IT-services-ROI-calculator/"
-#     response = requests.get(url)
-#     print(response,'ressdfsdfsdf')
-#     soup = BeautifulSoup(response.content, 'html.parser')
-
-#     # Example: Find specific data points
-#     print(soup,'soupsdfsdsdf')
-#     initial_investment = soup.find(id="initial-investment")
-#     annual_return = soup.find(id="annual-return")
-#     roi = soup.find(id="roi")
-
-#     return {
-#         "initial_investment": initial_investment,
-#         "annual_return": annual_return,
-#         "roi": roi
-#     }
 
 @app.get("/track/{campaign_id}/{email_b64}")
 async def track_open(campaign_id: str, email_b64: str):
@@ -1111,7 +646,7 @@ def get_all_campaigns_from_db():
     campaigns = []
     for row in campaigns_rows:
         campaign_id = row[0]
-        
+        print(campaign_id,'campaign_iderewewre')
         # Get metrics for the campaign
         cursor.execute("SELECT * FROM metrics WHERE campaign_id = ?", (campaign_id,))
         metrics_row = cursor.fetchone()
@@ -1218,6 +753,111 @@ def get_roi_data():
             "annual_return": "Error fetching data",
             "roi": "Error fetching data",
         }
+
+@app.get("/campaign-details/{campaign_id}")
+async def get_campaign_details(
+    campaign_id: str = None,
+    include_opened: bool = True,
+    include_bounced: bool = True,
+    include_replied: bool = True,
+    include_unsubscribed: bool = True,
+    include_all: bool = True,
+    include_summary: bool = True
+):
+    """Get comprehensive campaign details with options to filter what data to include"""
+    try:
+        # If no campaign_id is provided, return summary of all campaigns
+        if not campaign_id or campaign_id.lower() == "all":
+            campaigns = get_all_campaigns_from_db()
+            
+            campaign_summaries = []
+            for campaign in campaigns:
+                campaign_summaries.append({
+                    "campaign_id": campaign["campaign_id"],
+                    "start_time": campaign["start_time"],
+                    "end_time": campaign["end_time"],
+                    "total_processed": campaign["total_processed"],
+                    "successful_sends": campaign["successful_sends"],
+                    "failed_sends": campaign["failed_sends"],
+                    "open_rate": round(campaign["metrics"].get("open_rate", 0), 2),
+                    "bounce_rate": round(campaign["metrics"].get("bounce_rate", 0), 2),
+                    "reply_rate": round(campaign["metrics"].get("reply_rate", 0), 2),
+                    "unsubscribe_rate": round(campaign["metrics"].get("unsubscribe_rate", 0), 2),
+                    "total_opens": campaign["metrics"].get("total_opens", 0),
+                    "total_bounces": campaign["metrics"].get("total_bounces", 0),
+                    "total_replies": campaign["metrics"].get("total_replies", 0),
+                    "total_unsubscribes": campaign["metrics"].get("total_unsubscribes", 0)
+                })
+                
+            return {
+                "total_campaigns": len(campaign_summaries),
+                "campaigns": campaign_summaries
+            }
+        
+        # Get details for a specific campaign
+        metrics, tracking, total_processed, successful_sends, failed_sends = get_campaign_metrics_from_db(campaign_id)
+        
+        if not metrics and not tracking and total_processed == 0 and successful_sends == 0 and failed_sends == 0:
+            return {"error": "Campaign not found"}
+        
+        # Initialize result dictionary
+        result = {
+            "campaign_id": campaign_id
+        }
+        
+        # Add summary if requested
+        if include_summary:
+            result["summary"] = {
+                "total_processed": total_processed,
+                "successful_sends": successful_sends,
+                "failed_sends": failed_sends,
+                "open_rate": round(metrics.get('open_rate', 0), 2),
+                "bounce_rate": round(metrics.get('bounce_rate', 0), 2),
+                "reply_rate": round(metrics.get('reply_rate', 0), 2),
+                "unsubscribe_rate": round(metrics.get('unsubscribe_rate', 0), 2),
+                "total_opens": metrics.get('total_opens', 0),
+                "total_bounces": metrics.get('total_bounces', 0),
+                "total_replies": metrics.get('total_replies', 0),
+                "total_unsubscribes": metrics.get('total_unsubscribes', 0)
+            }
+        
+        # Add detailed tracking data based on requested filters
+        if include_opened:
+            opened_emails = [t for t in tracking if t.get('opens', 0) > 0]
+            result["opened_emails"] = {
+                "total": len(opened_emails),
+                "emails": opened_emails
+            }
+            
+        if include_bounced:
+            bounced_emails = [t for t in tracking if t.get('bounced', False)]
+            result["bounced_emails"] = {
+                "total": len(bounced_emails),
+                "emails": bounced_emails
+            }
+            
+        if include_replied:
+            replied_emails = [t for t in tracking if t.get('replied', False)]
+            result["replied_emails"] = {
+                "total": len(replied_emails),
+                "emails": replied_emails
+            }
+            
+        if include_unsubscribed:
+            unsubscribed_emails = [t for t in tracking if t.get('unsubscribed', False)]
+            result["unsubscribed_emails"] = {
+                "total": len(unsubscribed_emails),
+                "emails": unsubscribed_emails
+            }
+            
+        if include_all:
+            result["all_emails"] = tracking
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error retrieving campaign details: {str(e)}")
+        return {"error": f"Failed to retrieve campaign details: {str(e)}"}
 
 roi_data = get_roi_data()
 print(roi_data)
