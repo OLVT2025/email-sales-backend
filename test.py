@@ -564,6 +564,103 @@ class AIColdEmailAgent:
         except Exception as e:
             logger.error(f"Error checking replies: {str(e)}")
 
+@app.post("/send-emails/")
+async def send_emails(file: UploadFile = File(...), background_tasks: BackgroundTasks = BackgroundTasks()):
+    """Handle Excel upload and send emails"""
+    try:
+        # Generate unique campaign ID
+        campaign_id = str(uuid.uuid4())
+        
+        # Read Excel file
+        file_contents = await file.read()
+        df = pd.read_excel(BytesIO(file_contents))
+
+        if df.empty:
+            return {
+                "status": "success",
+                "campaign_id": campaign_id,
+                "message": "Excel sheet is empty. No emails sent.",
+                "summary": {
+                    "total_processed": 0,
+                    "successful_sends": 0,
+                    "failed_sends": 0
+                }
+            }
+        
+        # Initialize campaign tracking
+        email_tracker.initialize_campaign(campaign_id)
+        
+        # Initialize email agent
+        email_agent = AIColdEmailAgent()
+        
+        successful_sends = 0
+        failed_sends = 0
+        
+        # Process each row in the Excel file
+        for _, row in df.iterrows():
+            try:
+                # Generate personalized email content
+                email_content = email_agent.generate_email_content(
+                    industry=row["Industry"],
+                    name=row["Name"]
+                )
+                if "Hey {name}" in email_content["subject"]:
+                    email_content["subject"] = email_content["subject"].replace("{name}",row["Name"])
+                
+                # Send email with tracking
+                success = email_agent.send_email(
+                    to_email=row["Emails"],
+                    subject=email_content["subject"],
+                    body=email_content["body"],
+                    campaign_id=campaign_id
+                )
+                
+                if success:
+                    successful_sends += 1
+                    logger.info(f"Successfully sent email to {row['Emails']}")
+                else:
+                    failed_sends += 1
+                    logger.error(f"Failed to send email to {row['Emails']}")
+                
+                # Add delay to avoid spam detection
+                time.sleep(2)
+                
+            except Exception as e:
+                failed_sends += 1
+                logger.error(f"Error processing row for {row.get('Emails', 'unknown')}: {str(e)}")
+                continue
+        
+        # Update campaign statistics
+        update_campaign_stats(
+            campaign_id=campaign_id,
+            end_time=datetime.now(timezone.utc).isoformat(),
+            successful_sends=successful_sends,
+            failed_sends=failed_sends,
+            total_processed=len(df)
+        )
+        
+        # Schedule background tasks
+        background_tasks.add_task(email_agent.check_replies, campaign_id)
+        
+        return {
+            "status": "success",
+            "campaign_id": campaign_id,
+            "message": "Email campaign started",
+            "summary": {
+                "total_processed": len(df),
+                "successful_sends": successful_sends,
+                "failed_sends": failed_sends
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Campaign error: {str(e)}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "message": "Failed to process email campaign"
+        }
+
 @app.get("/track/{campaign_id}/{email_b64}")
 async def track_open(campaign_id: str, email_b64: str):
     """Track email opens"""
