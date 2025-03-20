@@ -738,7 +738,7 @@ class AIColdEmailAgent:
         - ROI Hint: Mention that software services can lead to increased efficiency, reduced costs, and improved productivity.
         - Emojis: Include relevant emojis to make the email engaging
         - Mandatory Link: Check ROI manually here - https://ROI.olvtechnologies.com/
-        - Calendly Link: Book a 15/30 min meeting - https://calendly.com/nitinkatke
+        - Calendly Link: Book a 15/30 min meeting - https://app.cal.com/nitinkatke
 
         EMAIL BODY STRUCTURE:
         - Paragraph 1 (Greeting): Start with a friendly greeting to {name}. Include a relevant industry emoji.
