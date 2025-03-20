@@ -22,6 +22,10 @@ import numpy as np
 import requests
 from bs4 import BeautifulSoup
 import sqlite3  # Import the sqlite3 module
+import psycopg2
+import os
+
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://salesdb_po5a_user:SaQt3HZkeuEPTx2v0y5fbAqiLvCOm1Sj@dpg-cvdr13l2ng1s73c9ogc0-a.oregon-postgres.render.com/salesdb_po5a")
 
 app = FastAPI()
 
@@ -64,16 +68,65 @@ PIXEL_PATH = create_tracking_pixel()
 # --- Database Setup ---
 DATABASE_FILE = "campaign_data.db"
 
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL, sslmode="require")
+
 def initialize_database():
     """Create database tables if they don't exist."""
-    conn = sqlite3.connect(DATABASE_FILE)
+    # conn = sqlite3.connect(DATABASE_FILE)
+    conn=get_db_connection()
     cursor = conn.cursor()
+
+    # cursor.execute("""
+    #     CREATE TABLE IF NOT EXISTS campaigns (
+    #         campaign_id TEXT PRIMARY KEY,
+    #         start_time TEXT,
+    #         end_time TEXT,
+    #         total_processed INTEGER DEFAULT 0,
+    #         successful_sends INTEGER DEFAULT 0,
+    #         failed_sends INTEGER DEFAULT 0
+    #     )
+    # """)
+
+    # cursor.execute("""
+    #     CREATE TABLE IF NOT EXISTS metrics (
+    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
+    #         campaign_id TEXT UNIQUE,
+    #         open_rate REAL,
+    #         bounce_rate REAL,
+    #         reply_rate REAL,
+    #         unsubscribe_rate REAL,
+    #         total_opens INTEGER DEFAULT 0,
+    #         total_bounces INTEGER DEFAULT 0,
+    #         total_replies INTEGER DEFAULT 0,
+    #         total_unsubscribes INTEGER DEFAULT 0,
+    #         FOREIGN KEY (campaign_id) REFERENCES campaigns(campaign_id)
+    #     )
+    # """)
+
+    # cursor.execute("""
+    #     CREATE TABLE IF NOT EXISTS tracking (
+    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
+    #         campaign_id TEXT,
+    #         email TEXT,
+    #         sent_time TEXT,
+    #         opens INTEGER DEFAULT 0,
+    #         first_opened TEXT,
+    #         last_opened TEXT,
+    #         bounced BOOLEAN DEFAULT FALSE,
+    #         replied BOOLEAN DEFAULT FALSE,
+    #         unsubscribed BOOLEAN DEFAULT FALSE,
+    #         FOREIGN KEY (campaign_id) REFERENCES campaigns(campaign_id),
+    #         UNIQUE (campaign_id, email) ON CONFLICT REPLACE  -- Ensures each (campaign_id, email) is unique
+    #     )
+    # """)
+    # cursor.execute("DROP TABLE IF EXISTS metrics")
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS campaigns (
-            campaign_id TEXT PRIMARY KEY,
-            start_time TEXT,
-            end_time TEXT,
+            campaign_id UUID PRIMARY KEY,
+            start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            end_time TIMESTAMP,
             total_processed INTEGER DEFAULT 0,
             successful_sends INTEGER DEFAULT 0,
             failed_sends INTEGER DEFAULT 0
@@ -82,204 +135,434 @@ def initialize_database():
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS metrics (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            campaign_id TEXT UNIQUE,
-            open_rate REAL,
-            bounce_rate REAL,
-            reply_rate REAL,
-            unsubscribe_rate REAL,
+            id SERIAL PRIMARY KEY,
+            campaign_id UUID UNIQUE REFERENCES campaigns(campaign_id) ON DELETE CASCADE,
+            open_rate REAL DEFAULT 0,
+            bounce_rate REAL DEFAULT 0,
+            reply_rate REAL DEFAULT 0,
+            unsubscribe_rate REAL DEFAULT 0,
             total_opens INTEGER DEFAULT 0,
             total_bounces INTEGER DEFAULT 0,
             total_replies INTEGER DEFAULT 0,
-            total_unsubscribes INTEGER DEFAULT 0,
-            FOREIGN KEY (campaign_id) REFERENCES campaigns(campaign_id)
+            total_unsubscribes INTEGER DEFAULT 0
         )
     """)
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS tracking (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            campaign_id TEXT,
-            email TEXT,
-            sent_time TEXT,
+            id SERIAL PRIMARY KEY,
+            campaign_id UUID REFERENCES campaigns(campaign_id) ON DELETE CASCADE,
+            email TEXT NOT NULL,
+            sent_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             opens INTEGER DEFAULT 0,
-            first_opened TEXT,
-            last_opened TEXT,
+            first_opened TIMESTAMP NULL,
+            last_opened TIMESTAMP NULL,
             bounced BOOLEAN DEFAULT FALSE,
             replied BOOLEAN DEFAULT FALSE,
             unsubscribed BOOLEAN DEFAULT FALSE,
-            FOREIGN KEY (campaign_id) REFERENCES campaigns(campaign_id),
-            UNIQUE (campaign_id, email) ON CONFLICT REPLACE  -- Ensures each (campaign_id, email) is unique
+            UNIQUE (campaign_id, email) -- Ensures each email per campaign is unique
         )
     """)
-    # cursor.execute("DROP TABLE IF EXISTS metrics")
 
     conn.commit()
     conn.close()
 
+
+# def insert_campaign(campaign_id, start_time):
+#     """Insert a new campaign into the database."""
+#     conn = sqlite3.connect(DATABASE_FILE)
+#     cursor = conn.cursor()
+#     cursor.execute("INSERT INTO campaigns (campaign_id, start_time) VALUES (?, ?)",
+#                    (campaign_id, start_time))
+#     conn.commit()
+#     conn.close()
 
 def insert_campaign(campaign_id, start_time):
-    """Insert a new campaign into the database."""
-    conn = sqlite3.connect(DATABASE_FILE)
+    """Insert a new campaign into the PostgreSQL database."""
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO campaigns (campaign_id, start_time) VALUES (?, ?)",
-                   (campaign_id, start_time))
-    conn.commit()
-    conn.close()
+    
+    try:
+        cursor.execute("INSERT INTO campaigns (campaign_id, start_time) VALUES (%s, %s)", 
+                       (campaign_id, start_time))
+        conn.commit()
+    except Exception as e:
+        print(f"Error inserting campaign: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+# def update_campaign_stats(campaign_id, end_time, successful_sends, failed_sends, total_processed):
+#     """Update campaign statistics."""
+#     conn = sqlite3.connect(DATABASE_FILE)
+#     cursor = conn.cursor()
+#     cursor.execute("""
+#         UPDATE campaigns
+#         SET end_time = ?, successful_sends = ?, failed_sends = ?, total_processed = ?
+#         WHERE campaign_id = ?
+#     """, (end_time, successful_sends, failed_sends, total_processed, campaign_id))
+#     conn.commit()
+#     conn.close()
 
 def update_campaign_stats(campaign_id, end_time, successful_sends, failed_sends, total_processed):
-    """Update campaign statistics."""
-    conn = sqlite3.connect(DATABASE_FILE)
+    """Update campaign statistics in PostgreSQL."""
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE campaigns
-        SET end_time = ?, successful_sends = ?, failed_sends = ?, total_processed = ?
-        WHERE campaign_id = ?
-    """, (end_time, successful_sends, failed_sends, total_processed, campaign_id))
-    conn.commit()
-    conn.close()
 
-def update_campaign_metrics(campaign_id, open_rate, bounce_rate, reply_rate, unsubscribe_rate,total_opens,total_bounces,total_replies,total_unsubscribes):
-    """Update campaign metrics in the database."""
-    conn = sqlite3.connect(DATABASE_FILE)
+    try:
+        cursor.execute("""
+            UPDATE campaigns
+            SET end_time = %s, successful_sends = %s, failed_sends = %s, total_processed = %s
+            WHERE campaign_id = %s
+        """, (end_time, successful_sends, failed_sends, total_processed, campaign_id))
+        
+        conn.commit()
+    except Exception as e:
+        print(f"Error updating campaign stats: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+# def update_campaign_metrics(campaign_id, open_rate, bounce_rate, reply_rate, unsubscribe_rate,total_opens,total_bounces,total_replies,total_unsubscribes):
+#     """Update campaign metrics in the database."""
+#     conn = sqlite3.connect(DATABASE_FILE)
+#     cursor = conn.cursor()
+#     print('got it 14')
+#     cursor.execute("""
+#         INSERT INTO metrics (campaign_id, open_rate, bounce_rate, reply_rate, unsubscribe_rate,total_opens,total_bounces,total_replies,total_unsubscribes)
+#         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+#         ON CONFLICT(campaign_id) DO UPDATE SET
+#             open_rate = excluded.open_rate,
+#             bounce_rate = excluded.bounce_rate,
+#             reply_rate = excluded.reply_rate,
+#             unsubscribe_rate = excluded.unsubscribe_rate,
+#             total_opens = excluded.total_opens,
+#             total_bounces = excluded.total_bounces,
+#             total_replies = excluded.total_replies,
+#             total_unsubscribes = excluded.total_unsubscribes
+#     """, (campaign_id, open_rate, bounce_rate, reply_rate, unsubscribe_rate,total_opens,total_bounces,total_replies,total_unsubscribes))
+#     print('got it 15')
+#     conn.commit()
+#     conn.close()
+
+def update_campaign_metrics(campaign_id, open_rate, bounce_rate, reply_rate, unsubscribe_rate, total_opens, total_bounces, total_replies, total_unsubscribes):
+    """Update campaign metrics in PostgreSQL."""
+    conn = get_db_connection()
     cursor = conn.cursor()
-    print('got it 14')
-    cursor.execute("""
-        INSERT INTO metrics (campaign_id, open_rate, bounce_rate, reply_rate, unsubscribe_rate,total_opens,total_bounces,total_replies,total_unsubscribes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(campaign_id) DO UPDATE SET
-            open_rate = excluded.open_rate,
-            bounce_rate = excluded.bounce_rate,
-            reply_rate = excluded.reply_rate,
-            unsubscribe_rate = excluded.unsubscribe_rate,
-            total_opens = excluded.total_opens,
-            total_bounces = excluded.total_bounces,
-            total_replies = excluded.total_replies,
-            total_unsubscribes = excluded.total_unsubscribes
-    """, (campaign_id, open_rate, bounce_rate, reply_rate, unsubscribe_rate,total_opens,total_bounces,total_replies,total_unsubscribes))
-    print('got it 15')
-    conn.commit()
-    conn.close()
+    
+    try:
+        print("Executing update for campaign metrics")
+
+        cursor.execute("""
+            INSERT INTO metrics (campaign_id, open_rate, bounce_rate, reply_rate, unsubscribe_rate, total_opens, total_bounces, total_replies, total_unsubscribes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (campaign_id) 
+            DO UPDATE SET
+                open_rate = EXCLUDED.open_rate,
+                bounce_rate = EXCLUDED.bounce_rate,
+                reply_rate = EXCLUDED.reply_rate,
+                unsubscribe_rate = EXCLUDED.unsubscribe_rate,
+                total_opens = EXCLUDED.total_opens,
+                total_bounces = EXCLUDED.total_bounces,
+                total_replies = EXCLUDED.total_replies,
+                total_unsubscribes = EXCLUDED.total_unsubscribes
+        """, (campaign_id, open_rate, bounce_rate, reply_rate, unsubscribe_rate, total_opens, total_bounces, total_replies, total_unsubscribes))
+
+        print("Metrics updated successfully")
+        conn.commit()
+    except Exception as e:
+        print(f"Error updating campaign metrics: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+# def get_campaign_metrics_from_db(campaign_id):
+#     """Get campaign metrics from the database."""
+#     conn = sqlite3.connect(DATABASE_FILE)
+#     cursor = conn.cursor()
+#     cursor.execute("SELECT * FROM metrics WHERE campaign_id = ?", (campaign_id,))
+#     metrics_row = cursor.fetchone()
+
+#     cursor.execute("SELECT * FROM tracking WHERE campaign_id = ?", (campaign_id,))
+#     tracking_rows = cursor.fetchall()
+
+#     cursor.execute(
+#         "SELECT total_processed, successful_sends, failed_sends FROM campaigns WHERE campaign_id = ?",
+#         (campaign_id,),
+#     )
+#     campaign_row = cursor.fetchone()
+#     conn.close()
+
+#     if metrics_row:
+#         metrics = {
+#             "open_rate": metrics_row[2],
+#             "bounce_rate": metrics_row[3],
+#             "reply_rate": metrics_row[4],
+#             "unsubscribe_rate": metrics_row[5],
+#             "total_opens": metrics_row[6],
+#             "total_bounces": metrics_row[7],
+#             "total_replies": metrics_row[8],
+#             "total_unsubscribes": metrics_row[9],
+#         }
+#     else:
+#         metrics = {}
+
+#     if tracking_rows:
+#         tracking = []
+#         for row in tracking_rows:
+#             tracking.append(
+#                 {
+#                     "email": row[2],
+#                     "sent_time": row[3],
+#                     "opens": row[4],
+#                     "first_opened": row[5],
+#                     "last_opened": row[6],
+#                     "bounced": row[7],
+#                     "replied": row[8],
+#                     "unsubscribed": row[9],
+#                 }
+#             )
+#     else:
+#         tracking = []
+
+#     if campaign_row:
+#         total_processed = campaign_row[0]
+#         successful_sends = campaign_row[1]
+#         failed_sends = campaign_row[2]
+#     else:
+#         total_processed = 0
+#         successful_sends = 0
+#         failed_sends = 0
+
+#     return metrics, tracking, total_processed, successful_sends, failed_sends
 
 def get_campaign_metrics_from_db(campaign_id):
-    """Get campaign metrics from the database."""
-    conn = sqlite3.connect(DATABASE_FILE)
+    """Get campaign metrics from the PostgreSQL database."""
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM metrics WHERE campaign_id = ?", (campaign_id,))
-    metrics_row = cursor.fetchone()
 
-    cursor.execute("SELECT * FROM tracking WHERE campaign_id = ?", (campaign_id,))
-    tracking_rows = cursor.fetchall()
+    try:
+        # Fetch campaign metrics
+        cursor.execute("SELECT * FROM metrics WHERE campaign_id = %s", (campaign_id,))
+        metrics_row = cursor.fetchone()
 
-    cursor.execute(
-        "SELECT total_processed, successful_sends, failed_sends FROM campaigns WHERE campaign_id = ?",
-        (campaign_id,),
-    )
-    campaign_row = cursor.fetchone()
-    conn.close()
+        # Fetch tracking data
+        cursor.execute("SELECT * FROM tracking WHERE campaign_id = %s", (campaign_id,))
+        tracking_rows = cursor.fetchall()
 
-    if metrics_row:
-        metrics = {
-            "open_rate": metrics_row[2],
-            "bounce_rate": metrics_row[3],
-            "reply_rate": metrics_row[4],
-            "unsubscribe_rate": metrics_row[5],
-            "total_opens": metrics_row[6],
-            "total_bounces": metrics_row[7],
-            "total_replies": metrics_row[8],
-            "total_unsubscribes": metrics_row[9],
-        }
-    else:
-        metrics = {}
+        # Fetch campaign statistics
+        cursor.execute("""
+            SELECT total_processed, successful_sends, failed_sends 
+            FROM campaigns WHERE campaign_id = %s
+        """, (campaign_id,))
+        campaign_row = cursor.fetchone()
 
-    if tracking_rows:
-        tracking = []
-        for row in tracking_rows:
-            tracking.append(
-                {
-                    "email": row[2],
-                    "sent_time": row[3],
-                    "opens": row[4],
-                    "first_opened": row[5],
-                    "last_opened": row[6],
-                    "bounced": row[7],
-                    "replied": row[8],
-                    "unsubscribed": row[9],
-                }
-            )
-    else:
-        tracking = []
+        # Process metrics data
+        if metrics_row:
+            metrics = {
+                "open_rate": metrics_row[2],
+                "bounce_rate": metrics_row[3],
+                "reply_rate": metrics_row[4],
+                "unsubscribe_rate": metrics_row[5],
+                "total_opens": metrics_row[6],
+                "total_bounces": metrics_row[7],
+                "total_replies": metrics_row[8],
+                "total_unsubscribes": metrics_row[9],
+            }
+        else:
+            metrics = {
+                "open_rate": 0,
+                "bounce_rate": 0,
+                "reply_rate": 0,
+                "unsubscribe_rate": 0,
+                "total_opens": 0,
+                "total_bounces": 0,
+                "total_replies": 0,
+                "total_unsubscribes": 0,
+            }
 
-    if campaign_row:
-        total_processed = campaign_row[0]
-        successful_sends = campaign_row[1]
-        failed_sends = campaign_row[2]
-    else:
-        total_processed = 0
-        successful_sends = 0
-        failed_sends = 0
+        # Process tracking data
+        tracking = [
+            {
+                "email": row[2],
+                "sent_time": row[3],
+                "opens": row[4],
+                "first_opened": row[5],
+                "last_opened": row[6],
+                "bounced": row[7],
+                "replied": row[8],
+                "unsubscribed": row[9],
+            }
+            for row in tracking_rows
+        ] if tracking_rows else []
 
-    return metrics, tracking, total_processed, successful_sends, failed_sends
+        # Process campaign statistics
+        if campaign_row:
+            total_processed, successful_sends, failed_sends = campaign_row
+        else:
+            total_processed, successful_sends, failed_sends = 0, 0, 0
+
+        return metrics, tracking, total_processed, successful_sends, failed_sends
+
+    except Exception as e:
+        print(f"Error fetching campaign metrics: {e}")
+        return {}, [], 0, 0, 0
+
+    finally:
+        cursor.close()
+        conn.close()
+
+# def track_send_in_db(campaign_id, email, sent_time):
+#     """Track when an email is sent in the database."""
+#     conn = sqlite3.connect(DATABASE_FILE)
+#     cursor = conn.cursor()
+#     cursor.execute(
+#         "INSERT INTO tracking (campaign_id, email, sent_time) VALUES (?, ?, ?)",
+#         (campaign_id, email, sent_time)
+#     )
+#     conn.commit()
+#     conn.close()
 
 def track_send_in_db(campaign_id, email, sent_time):
-    """Track when an email is sent in the database."""
-    conn = sqlite3.connect(DATABASE_FILE)
+    """Track when an email is sent in the PostgreSQL database."""
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO tracking (campaign_id, email, sent_time) VALUES (?, ?, ?)",
-        (campaign_id, email, sent_time)
-    )
-    conn.commit()
-    conn.close()
+
+    try:
+        cursor.execute(
+            "INSERT INTO tracking (campaign_id, email, sent_time) VALUES (%s, %s, %s)",
+            (campaign_id, email, sent_time)
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"Error tracking email send: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+# def track_open_in_db(campaign_id, email, now):
+#     print(campaign_id,email,'get it 143')
+#     """Track when an email is opened in the database."""
+#     conn = sqlite3.connect(DATABASE_FILE)
+#     cursor = conn.cursor()
+#     cursor.execute(
+#         """
+#         UPDATE tracking
+#         SET opens = opens + 1, first_opened = CASE WHEN first_opened IS NULL THEN ? ELSE first_opened END, last_opened = ?
+#         WHERE campaign_id = ? AND email = ?
+#         """,
+#         (now, now, campaign_id, email),
+#     )
+#     conn.commit()
+#     conn.close()
+
+# def track_bounce_in_db(campaign_id, email):
+#     """Track bounced emails in the database."""
+#     conn = sqlite3.connect(DATABASE_FILE)
+#     cursor = conn.cursor()
+#     cursor.execute(
+#         "UPDATE tracking SET bounced = TRUE WHERE campaign_id = ? AND email = ?",
+#         (campaign_id, email)
+#     )
+#     conn.commit()
+#     conn.close()
+
+# def track_reply_in_db(campaign_id, email):
+#     """Track email replies in the database."""
+#     conn = sqlite3.connect(DATABASE_FILE)
+#     cursor = conn.cursor()
+#     cursor.execute(
+#         "UPDATE tracking SET replied = TRUE WHERE campaign_id = ? AND email = ?",
+#         (campaign_id, email)
+#     )
+#     conn.commit()
+#     conn.close()
+
+# def track_unsubscribe_in_db(campaign_id, email):
+#     """Track unsubscribes in the database."""
+#     conn = sqlite3.connect(DATABASE_FILE)
+#     cursor = conn.cursor()
+#     cursor.execute(
+#         "UPDATE tracking SET unsubscribed = TRUE WHERE campaign_id = ? AND email = ?",
+#         (campaign_id, email)
+#     )
+#     conn.commit()
+#     conn.close()
 
 def track_open_in_db(campaign_id, email, now):
-    print(campaign_id,email,'get it 143')
-    """Track when an email is opened in the database."""
-    conn = sqlite3.connect(DATABASE_FILE)
+    """Track when an email is opened in the PostgreSQL database."""
+    print(campaign_id, email, "get it 143")
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        UPDATE tracking
-        SET opens = opens + 1, first_opened = CASE WHEN first_opened IS NULL THEN ? ELSE first_opened END, last_opened = ?
-        WHERE campaign_id = ? AND email = ?
-        """,
-        (now, now, campaign_id, email),
-    )
-    conn.commit()
-    conn.close()
+
+    try:
+        cursor.execute(
+            """
+            UPDATE tracking
+            SET opens = opens + 1, 
+                first_opened = CASE WHEN first_opened IS NULL THEN %s ELSE first_opened END, 
+                last_opened = %s
+            WHERE campaign_id = %s AND email = %s
+            """,
+            (now, now, campaign_id, email),
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"Error tracking email open: {e}")
+    finally:
+        cursor.close()
+        conn.close()
 
 def track_bounce_in_db(campaign_id, email):
-    """Track bounced emails in the database."""
-    conn = sqlite3.connect(DATABASE_FILE)
+    """Track bounced emails in the PostgreSQL database."""
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE tracking SET bounced = TRUE WHERE campaign_id = ? AND email = ?",
-        (campaign_id, email)
-    )
-    conn.commit()
-    conn.close()
+
+    try:
+        cursor.execute(
+            "UPDATE tracking SET bounced = TRUE WHERE campaign_id = %s AND email = %s",
+            (campaign_id, email)
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"Error tracking email bounce: {e}")
+    finally:
+        cursor.close()
+        conn.close()
 
 def track_reply_in_db(campaign_id, email):
-    """Track email replies in the database."""
-    conn = sqlite3.connect(DATABASE_FILE)
+    """Track email replies in the PostgreSQL database."""
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE tracking SET replied = TRUE WHERE campaign_id = ? AND email = ?",
-        (campaign_id, email)
-    )
-    conn.commit()
-    conn.close()
+
+    try:
+        cursor.execute(
+            "UPDATE tracking SET replied = TRUE WHERE campaign_id = %s AND email = %s",
+            (campaign_id, email)
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"Error tracking email reply: {e}")
+    finally:
+        cursor.close()
+        conn.close()
 
 def track_unsubscribe_in_db(campaign_id, email):
-    """Track unsubscribes in the database."""
-    conn = sqlite3.connect(DATABASE_FILE)
+    """Track unsubscribes in the PostgreSQL database."""
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE tracking SET unsubscribed = TRUE WHERE campaign_id = ? AND email = ?",
-        (campaign_id, email)
-    )
-    conn.commit()
-    conn.close()
+
+    try:
+        cursor.execute(
+            "UPDATE tracking SET unsubscribed = TRUE WHERE campaign_id = %s AND email = %s",
+            (campaign_id, email)
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"Error tracking email unsubscribe: {e}")
+    finally:
+        cursor.close()
+        conn.close()
 
 class EmailTracker:
     def __init__(self):
@@ -330,48 +613,103 @@ class EmailTracker:
         track_unsubscribe_in_db(campaign_id, email)
         self._update_metrics(campaign_id)
             
+    # def _update_metrics(self, campaign_id):
+    #     """Update campaign metrics"""
+    #     print('got it 0')
+    #     conn = sqlite3.connect(DATABASE_FILE)
+    #     print('got it 1')
+    #     cursor = conn.cursor()
+    #     print('got it 2')
+    #     cursor.execute("SELECT COUNT(*) FROM tracking WHERE campaign_id = ?", (campaign_id,))
+    #     print('got it 3')
+    #     total_sent = cursor.fetchone()[0]
+    #     print('got it 4',total_sent)
+    #     cursor.execute("SELECT COUNT(*) FROM tracking WHERE campaign_id = ? AND opens > 0", (campaign_id,))
+    #     print('got it 5')
+    #     total_opens = cursor.fetchone()[0]
+    #     print('got it 6',total_opens)
+    #     cursor.execute("SELECT COUNT(*) FROM tracking WHERE campaign_id = ? AND bounced = TRUE", (campaign_id,))
+    #     print('got it 6')
+    #     total_bounces = cursor.fetchone()[0]
+    #     print('got it 7',total_bounces)
+    #     cursor.execute("SELECT COUNT(*) FROM tracking WHERE campaign_id = ? AND replied = TRUE", (campaign_id,))
+    #     print('got it 8')
+    #     total_replies = cursor.fetchone()[0]
+    #     print('got it 9',total_replies)
+    #     cursor.execute("SELECT COUNT(*) FROM tracking WHERE campaign_id = ? AND unsubscribed = TRUE", (campaign_id,))
+    #     print('got it 10')
+    #     total_unsubscribes = cursor.fetchone()[0]
+    #     print('got it 11',total_unsubscribes)
+    #     conn.close()
+
+    #     if total_sent >0:
+    #         open_rate = (total_opens / total_sent) * 100
+    #         bounce_rate = (total_bounces / total_sent) * 100
+    #         reply_rate = (total_replies / total_sent) * 100
+    #         unsubscribe_rate = (total_unsubscribes / total_sent) * 100
+    #     else:
+    #         open_rate = 0
+    #         bounce_rate = 0
+    #         reply_rate = 0
+    #         unsubscribe_rate = 0
+    #     print('got it 12')
+    #     update_campaign_metrics(campaign_id, open_rate, bounce_rate, reply_rate, unsubscribe_rate, total_opens, total_bounces, total_replies, total_unsubscribes)
+    #     print('got it 13')
+
     def _update_metrics(self, campaign_id):
         """Update campaign metrics"""
-        print('got it 0')
-        conn = sqlite3.connect(DATABASE_FILE)
-        print('got it 1')
+        print("Updating campaign metrics...")
+        conn = get_db_connection()
         cursor = conn.cursor()
-        print('got it 2')
-        cursor.execute("SELECT COUNT(*) FROM tracking WHERE campaign_id = ?", (campaign_id,))
-        print('got it 3')
-        total_sent = cursor.fetchone()[0]
-        print('got it 4',total_sent)
-        cursor.execute("SELECT COUNT(*) FROM tracking WHERE campaign_id = ? AND opens > 0", (campaign_id,))
-        print('got it 5')
-        total_opens = cursor.fetchone()[0]
-        print('got it 6',total_opens)
-        cursor.execute("SELECT COUNT(*) FROM tracking WHERE campaign_id = ? AND bounced = TRUE", (campaign_id,))
-        print('got it 6')
-        total_bounces = cursor.fetchone()[0]
-        print('got it 7',total_bounces)
-        cursor.execute("SELECT COUNT(*) FROM tracking WHERE campaign_id = ? AND replied = TRUE", (campaign_id,))
-        print('got it 8')
-        total_replies = cursor.fetchone()[0]
-        print('got it 9',total_replies)
-        cursor.execute("SELECT COUNT(*) FROM tracking WHERE campaign_id = ? AND unsubscribed = TRUE", (campaign_id,))
-        print('got it 10')
-        total_unsubscribes = cursor.fetchone()[0]
-        print('got it 11',total_unsubscribes)
-        conn.close()
 
-        if total_sent >0:
-            open_rate = (total_opens / total_sent) * 100
-            bounce_rate = (total_bounces / total_sent) * 100
-            reply_rate = (total_replies / total_sent) * 100
-            unsubscribe_rate = (total_unsubscribes / total_sent) * 100
-        else:
-            open_rate = 0
-            bounce_rate = 0
-            reply_rate = 0
-            unsubscribe_rate = 0
-        print('got it 12')
-        update_campaign_metrics(campaign_id, open_rate, bounce_rate, reply_rate, unsubscribe_rate, total_opens, total_bounces, total_replies, total_unsubscribes)
-        print('got it 13')
+        try:
+            print("Fetching total emails sent...")
+            cursor.execute("SELECT COUNT(*) FROM tracking WHERE campaign_id = %s", (campaign_id,))
+            total_sent = cursor.fetchone()[0]
+            print(f"Total sent: {total_sent}")
+
+            print("Fetching total opens...")
+            cursor.execute("SELECT COUNT(*) FROM tracking WHERE campaign_id = %s AND opens > 0", (campaign_id,))
+            total_opens = cursor.fetchone()[0]
+            print(f"Total opens: {total_opens}")
+
+            print("Fetching total bounces...")
+            cursor.execute("SELECT COUNT(*) FROM tracking WHERE campaign_id = %s AND bounced = TRUE", (campaign_id,))
+            total_bounces = cursor.fetchone()[0]
+            print(f"Total bounces: {total_bounces}")
+
+            print("Fetching total replies...")
+            cursor.execute("SELECT COUNT(*) FROM tracking WHERE campaign_id = %s AND replied = TRUE", (campaign_id,))
+            total_replies = cursor.fetchone()[0]
+            print(f"Total replies: {total_replies}")
+
+            print("Fetching total unsubscribes...")
+            cursor.execute("SELECT COUNT(*) FROM tracking WHERE campaign_id = %s AND unsubscribed = TRUE", (campaign_id,))
+            total_unsubscribes = cursor.fetchone()[0]
+            print(f"Total unsubscribes: {total_unsubscribes}")
+
+            conn.close()
+
+            if total_sent > 0:
+                open_rate = (total_opens / total_sent) * 100
+                bounce_rate = (total_bounces / total_sent) * 100
+                reply_rate = (total_replies / total_sent) * 100
+                unsubscribe_rate = (total_unsubscribes / total_sent) * 100
+            else:
+                open_rate = 0
+                bounce_rate = 0
+                reply_rate = 0
+                unsubscribe_rate = 0
+
+            print("Updating campaign metrics in database...")
+            update_campaign_metrics(campaign_id, open_rate, bounce_rate, reply_rate, unsubscribe_rate, total_opens, total_bounces, total_replies, total_unsubscribes)
+            print("Campaign metrics updated successfully.")
+
+        except Exception as e:
+            print(f"Error updating campaign metrics: {e}")
+        finally:
+            cursor.close()
+            conn.close()
 
 email_tracker = EmailTracker()
 
@@ -519,7 +857,7 @@ class AIColdEmailAgent:
                 server.send_message(msg)
                 
             # Track successful send
-            track_send_in_db(campaign_id, to_email, datetime.now(timezone.utc).isoformat())
+            # track_send_in_db(campaign_id, to_email, datetime.now(timezone.utc).isoformat())
             email_tracker.track_send(campaign_id, to_email)
             return True
             
@@ -726,89 +1064,165 @@ async def get_campaign_metrics(campaign_id: str):
         logger.error(f"Campaign metrics error: {str(e)}")
         return {"error": "Failed to retrieve campaign metrics"}
 
+# def get_all_campaigns_from_db():
+#     """Get a list of all campaign IDs and their details (including metrics and tracking) from the database."""
+#     conn = sqlite3.connect(DATABASE_FILE)
+#     cursor = conn.cursor()
+
+#     # Get basic campaign details
+#     cursor.execute(
+#         """
+#         SELECT campaign_id, start_time, end_time, total_processed, successful_sends, failed_sends 
+#         FROM campaigns
+#         """
+#     )
+#     campaigns_rows = cursor.fetchall()
+
+#     campaigns = []
+#     for row in campaigns_rows:
+#         campaign_id = row[0]
+#         print(campaign_id,'campaign_iderewewre')
+#         # Get metrics for the campaign
+#         cursor.execute("SELECT * FROM metrics WHERE campaign_id = ?", (campaign_id,))
+#         metrics_row = cursor.fetchone()
+
+#         metrics = {}
+#         if metrics_row:
+#              metrics = {
+#                 "open_rate": metrics_row[2],
+#                 "bounce_rate": metrics_row[3],
+#                 "reply_rate": metrics_row[4],
+#                 "unsubscribe_rate": metrics_row[5],
+#                 "total_opens": metrics_row[6],
+#                 "total_bounces": metrics_row[7],
+#                 "total_replies": metrics_row[8],
+#                 "total_unsubscribes": metrics_row[9],
+#             }
+#         else:
+#             metrics = {
+#                  "open_rate":0,
+#                 "bounce_rate":0,
+#                 "reply_rate": 0,
+#                 "unsubscribe_rate": 0,
+#                 "total_opens": 0,
+#                 "total_bounces": 0,
+#                 "total_replies":0,
+#                 "total_unsubscribes":0
+#             }
+
+#         # Get tracking details for the campaign
+#         cursor.execute("SELECT * FROM tracking WHERE campaign_id = ?", (campaign_id,))
+#         tracking_rows = cursor.fetchall()
+
+#         tracking = []
+#         if tracking_rows:
+#              for tracking_row in tracking_rows:
+#                 tracking.append(
+#                     {
+#                         "email": tracking_row[2],
+#                         "sent_time": tracking_row[3],
+#                         "opens": tracking_row[4],
+#                         "first_opened": tracking_row[5],
+#                         "last_opened": tracking_row[6],
+#                         "bounced": tracking_row[7],
+#                         "replied": tracking_row[8],
+#                         "unsubscribed": tracking_row[9],
+#                     }
+#                 )
+#         else:
+#             tracking = []
+
+#         campaigns.append(
+#             {
+#                 "campaign_id": campaign_id,
+#                 "start_time": row[1],
+#                 "end_time": row[2],
+#                 "total_processed": row[3],
+#                 "successful_sends": row[4],
+#                 "failed_sends": row[5],
+#                 "metrics": metrics,
+#                 "detailed_tracking": tracking,
+#             }
+#         )
+
+#     conn.close()
+#     return campaigns
+
 def get_all_campaigns_from_db():
-    """Get a list of all campaign IDs and their details (including metrics and tracking) from the database."""
-    conn = sqlite3.connect(DATABASE_FILE)
+    """Get a list of all campaign IDs and their details (including metrics and tracking) from the PostgreSQL database."""
+    conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Get basic campaign details
-    cursor.execute(
-        """
-        SELECT campaign_id, start_time, end_time, total_processed, successful_sends, failed_sends 
-        FROM campaigns
-        """
-    )
-    campaigns_rows = cursor.fetchall()
-
-    campaigns = []
-    for row in campaigns_rows:
-        campaign_id = row[0]
-        print(campaign_id,'campaign_iderewewre')
-        # Get metrics for the campaign
-        cursor.execute("SELECT * FROM metrics WHERE campaign_id = ?", (campaign_id,))
-        metrics_row = cursor.fetchone()
-
-        metrics = {}
-        if metrics_row:
-             metrics = {
-                "open_rate": metrics_row[2],
-                "bounce_rate": metrics_row[3],
-                "reply_rate": metrics_row[4],
-                "unsubscribe_rate": metrics_row[5],
-                "total_opens": metrics_row[6],
-                "total_bounces": metrics_row[7],
-                "total_replies": metrics_row[8],
-                "total_unsubscribes": metrics_row[9],
-            }
-        else:
-            metrics = {
-                 "open_rate":0,
-                "bounce_rate":0,
-                "reply_rate": 0,
-                "unsubscribe_rate": 0,
-                "total_opens": 0,
-                "total_bounces": 0,
-                "total_replies":0,
-                "total_unsubscribes":0
-            }
-
-        # Get tracking details for the campaign
-        cursor.execute("SELECT * FROM tracking WHERE campaign_id = ?", (campaign_id,))
-        tracking_rows = cursor.fetchall()
-
-        tracking = []
-        if tracking_rows:
-             for tracking_row in tracking_rows:
-                tracking.append(
-                    {
-                        "email": tracking_row[2],
-                        "sent_time": tracking_row[3],
-                        "opens": tracking_row[4],
-                        "first_opened": tracking_row[5],
-                        "last_opened": tracking_row[6],
-                        "bounced": tracking_row[7],
-                        "replied": tracking_row[8],
-                        "unsubscribed": tracking_row[9],
-                    }
-                )
-        else:
-            tracking = []
-
-        campaigns.append(
-            {
-                "campaign_id": campaign_id,
-                "start_time": row[1],
-                "end_time": row[2],
-                "total_processed": row[3],
-                "successful_sends": row[4],
-                "failed_sends": row[5],
-                "metrics": metrics,
-                "detailed_tracking": tracking,
-            }
+    try:
+        # Get basic campaign details
+        cursor.execute(
+            """
+            SELECT campaign_id, start_time, end_time, total_processed, successful_sends, failed_sends 
+            FROM campaigns
+            """
         )
+        campaigns_rows = cursor.fetchall()
 
-    conn.close()
-    return campaigns
+        campaigns = []
+        for row in campaigns_rows:
+            campaign_id = row[0]
+            print(f"Processing campaign: {campaign_id}")
+
+            # Get metrics for the campaign
+            cursor.execute("SELECT * FROM metrics WHERE campaign_id = %s", (campaign_id,))
+            metrics_row = cursor.fetchone()
+
+            metrics = {
+                "open_rate": metrics_row[2] if metrics_row else 0,
+                "bounce_rate": metrics_row[3] if metrics_row else 0,
+                "reply_rate": metrics_row[4] if metrics_row else 0,
+                "unsubscribe_rate": metrics_row[5] if metrics_row else 0,
+                "total_opens": metrics_row[6] if metrics_row else 0,
+                "total_bounces": metrics_row[7] if metrics_row else 0,
+                "total_replies": metrics_row[8] if metrics_row else 0,
+                "total_unsubscribes": metrics_row[9] if metrics_row else 0,
+            }
+
+            # Get tracking details for the campaign
+            cursor.execute("SELECT * FROM tracking WHERE campaign_id = %s", (campaign_id,))
+            tracking_rows = cursor.fetchall()
+
+            tracking = [
+                {
+                    "email": tracking_row[2],
+                    "sent_time": tracking_row[3],
+                    "opens": tracking_row[4],
+                    "first_opened": tracking_row[5],
+                    "last_opened": tracking_row[6],
+                    "bounced": tracking_row[7],
+                    "replied": tracking_row[8],
+                    "unsubscribed": tracking_row[9],
+                }
+                for tracking_row in tracking_rows
+            ] if tracking_rows else []
+
+            campaigns.append(
+                {
+                    "campaign_id": campaign_id,
+                    "start_time": row[1],
+                    "end_time": row[2],
+                    "total_processed": row[3],
+                    "successful_sends": row[4],
+                    "failed_sends": row[5],
+                    "metrics": metrics,
+                    "detailed_tracking": tracking,
+                }
+            )
+
+        return campaigns
+
+    except Exception as e:
+        print(f"Error fetching campaign data: {e}")
+        return []
+
+    finally:
+        cursor.close()
+        conn.close()
 
 @app.get("/all-campaigns/")
 async def get_all_campaigns():
