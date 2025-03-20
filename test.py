@@ -738,7 +738,7 @@ class AIColdEmailAgent:
         - ROI Hint: Mention that software services can lead to increased efficiency, reduced costs, and improved productivity.
         - Emojis: Include relevant emojis to make the email engaging
         - Mandatory Link: Check ROI manually here - https://ROI.olvtechnologies.com/
-        - Calendly Link: Book a 15/30 min meeting - https://app.cal.com/nitinkatke
+        - Calendly Link: Book a 15/30 min meeting - https://cal.com/nitinkatke
 
         EMAIL BODY STRUCTURE:
         - Paragraph 1 (Greeting): Start with a friendly greeting to {name}. Include a relevant industry emoji.
@@ -747,8 +747,8 @@ class AIColdEmailAgent:
         - Paragraph 4 (Value Proposition): Explain how our software services can help businesses in the {industry} industry. Highlight value propositions, such as improved efficiency, streamlined operations, cost savings, or better customer engagement. Be specific about the benefits.
         - Paragraph 5 (ROI Hint): Briefly mention that adopting new software solutions can often result in a positive ROI, due to increased efficiency, reduced costs, and improved productivity.
         - paragraph 6 : "Our founders are alums of Premier Institutes such as IIT, NMIMS and NUS, Singapore. Our team of seasoned professionals from prestigious institutions like NITs and top tech colleges has helped clients across US, Europe, Canada, Australia, Hong Kong and Singapore" add this in proffesional way where it represnts our profile strong.
-        - Paragraph 6 (Call to Action): Invite them to book a 15/30-minute call via the calendly link to discuss their needs.
-        - Paragraph 7 (Closing): End with a professional closing.
+        - Paragraph 7 (Call to Action): Invite them to book a 15/30-minute call via the calendly link to discuss their needs.
+        - Paragraph 8 (Closing): End with a professional closing.
 
         IMPORTANT:
         - Hey {name}, Subject line with an emoji 🎉,
@@ -764,7 +764,7 @@ class AIColdEmailAgent:
         JSON FORMAT:
         {{
             "subject": "Hey {name}, Subject line with an emoji 🎉",
-            "body": "Email body here\\n\\nBest regards,\\nNitin Katke\\nco-founder OLV Technologies Pvt Ltd"
+            "body": "Email body here\\n\\nBest regards,\\nNitin Katke\\nco-founder,OLV Technologies Pvt Ltd"
         }}
         """
 
