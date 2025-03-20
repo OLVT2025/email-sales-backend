@@ -729,7 +729,7 @@ class AIColdEmailAgent:
         CONTEXT:
         - Industry: {industry}
         - Recipient Name: {name}
-        - Sender: Oliva, an AI assistant working with Nitin Katke, the co-founder of Orange League Ventures Pvt Ltd.
+        - Sender: Oliva, an AI assistant working with Nitin Katke, the co-founder of OLV Technologies Pvt Ltd.
         - Purpose: Offering software services
         - Style: Professional, friendly, and engaging with emojis.
         - Recent Event in Industry
@@ -746,12 +746,13 @@ class AIColdEmailAgent:
         - Paragraph 3 (Relevance): Briefly mention recent_event related to their industry and transition into how their industry may be experiencing specific_challenges.
         - Paragraph 4 (Value Proposition): Explain how our software services can help businesses in the {industry} industry. Highlight value propositions, such as improved efficiency, streamlined operations, cost savings, or better customer engagement. Be specific about the benefits.
         - Paragraph 5 (ROI Hint): Briefly mention that adopting new software solutions can often result in a positive ROI, due to increased efficiency, reduced costs, and improved productivity.
+        - paragraph 6 : "Our founders are alums of Premier Institutes such as IIT, NMIMS and NUS, Singapore. Our team of seasoned professionals from prestigious institutions like NITs and top tech colleges has helped clients across US, Europe, Canada, Australia, Hong Kong and Singapore" add this in proffesional way where it represnts our profile strong.
         - Paragraph 6 (Call to Action): Invite them to book a 15/30-minute call via the calendly link to discuss their needs.
         - Paragraph 7 (Closing): End with a professional closing.
 
         IMPORTANT:
         - Hey {name}, Subject line with an emoji 🎉,
-        - Introduction like this "I am Oliva, an AI assistant working with Nitin Katke, the co-founder of Orange League Ventures Pvt Ltd."
+        - Introduction like this "I am Oliva, an AI assistant working with Nitin Katke, the co-founder of OLV Technologies Pvt Ltd."
         - Ensure all content is complete and fully written.
         - Always include the Calendly link and ROI link in the body.
         - Always make the content as dynamic as possible.
@@ -763,7 +764,7 @@ class AIColdEmailAgent:
         JSON FORMAT:
         {{
             "subject": "Hey {name}, Subject line with an emoji 🎉",
-            "body": "Email body here\\n\\nBest regards,\\nNitin\\nOrange League Ventures pvt ltd"
+            "body": "Email body here\\n\\nBest regards,\\nNitin Katke\\nco-founder OLV Technologies Pvt Ltd"
         }}
         """
 
