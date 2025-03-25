@@ -925,6 +925,15 @@ async def send_emails(file: UploadFile = File(...), background_tasks: Background
                     "failed_sends": 0
                 }
             }
+        # Detect type of emails (individuals or company emails)
+        if "Emails" in df.columns:
+            email_column = "Emails"   # Individuals
+            name_column = "Name"
+        elif "Contact Email" in df.columns:
+            email_column = "Contact Email"  # Companies
+            name_column = "Name"  # Company name
+        else:
+            return {"status": "error", "message": "No valid email column found."}
         
         # Initialize campaign tracking
         email_tracker.initialize_campaign(campaign_id)
@@ -940,15 +949,15 @@ async def send_emails(file: UploadFile = File(...), background_tasks: Background
             try:
                 # Generate personalized email content
                 email_content = email_agent.generate_email_content(
-                    industry=row["Industry"],
-                    name=row["Name"]
+                    industry=row.get("Industry", "Unknown"),
+                    name=row[name_column]  # Person or Company Name
                 )
                 if "Hey {name}" in email_content["subject"]:
                     email_content["subject"] = email_content["subject"].replace("{name}",row["Name"])
                 
                 # Send email with tracking
                 success = email_agent.send_email(
-                    to_email=row["Emails"],
+                    to_email=row[email_column],
                     subject=email_content["subject"],
                     body=email_content["body"],
                     campaign_id=campaign_id
@@ -956,17 +965,17 @@ async def send_emails(file: UploadFile = File(...), background_tasks: Background
                 
                 if success:
                     successful_sends += 1
-                    logger.info(f"Successfully sent email to {row['Emails']}")
+                    logger.info(f"Successfully sent email to {row[email_column]}")
                 else:
                     failed_sends += 1
-                    logger.error(f"Failed to send email to {row['Emails']}")
+                    logger.error(f"Failed to send email to {row[email_column]}")
                 
                 # Add delay to avoid spam detection
                 time.sleep(2)
                 
             except Exception as e:
                 failed_sends += 1
-                logger.error(f"Error processing row for {row.get('Emails', 'unknown')}: {str(e)}")
+                logger.error(f"Error processing row for {row.get(email_column, 'unknown')}: {str(e)}")
                 continue
         
         # Update campaign statistics
@@ -1065,111 +1074,35 @@ async def get_campaign_metrics(campaign_id: str):
         logger.error(f"Campaign metrics error: {str(e)}")
         return {"error": "Failed to retrieve campaign metrics"}
 
-# def get_all_campaigns_from_db():
-#     """Get a list of all campaign IDs and their details (including metrics and tracking) from the database."""
-#     conn = sqlite3.connect(DATABASE_FILE)
-#     cursor = conn.cursor()
-
-#     # Get basic campaign details
-#     cursor.execute(
-#         """
-#         SELECT campaign_id, start_time, end_time, total_processed, successful_sends, failed_sends 
-#         FROM campaigns
-#         """
-#     )
-#     campaigns_rows = cursor.fetchall()
-
-#     campaigns = []
-#     for row in campaigns_rows:
-#         campaign_id = row[0]
-#         print(campaign_id,'campaign_iderewewre')
-#         # Get metrics for the campaign
-#         cursor.execute("SELECT * FROM metrics WHERE campaign_id = ?", (campaign_id,))
-#         metrics_row = cursor.fetchone()
-
-#         metrics = {}
-#         if metrics_row:
-#              metrics = {
-#                 "open_rate": metrics_row[2],
-#                 "bounce_rate": metrics_row[3],
-#                 "reply_rate": metrics_row[4],
-#                 "unsubscribe_rate": metrics_row[5],
-#                 "total_opens": metrics_row[6],
-#                 "total_bounces": metrics_row[7],
-#                 "total_replies": metrics_row[8],
-#                 "total_unsubscribes": metrics_row[9],
-#             }
-#         else:
-#             metrics = {
-#                  "open_rate":0,
-#                 "bounce_rate":0,
-#                 "reply_rate": 0,
-#                 "unsubscribe_rate": 0,
-#                 "total_opens": 0,
-#                 "total_bounces": 0,
-#                 "total_replies":0,
-#                 "total_unsubscribes":0
-#             }
-
-#         # Get tracking details for the campaign
-#         cursor.execute("SELECT * FROM tracking WHERE campaign_id = ?", (campaign_id,))
-#         tracking_rows = cursor.fetchall()
-
-#         tracking = []
-#         if tracking_rows:
-#              for tracking_row in tracking_rows:
-#                 tracking.append(
-#                     {
-#                         "email": tracking_row[2],
-#                         "sent_time": tracking_row[3],
-#                         "opens": tracking_row[4],
-#                         "first_opened": tracking_row[5],
-#                         "last_opened": tracking_row[6],
-#                         "bounced": tracking_row[7],
-#                         "replied": tracking_row[8],
-#                         "unsubscribed": tracking_row[9],
-#                     }
-#                 )
-#         else:
-#             tracking = []
-
-#         campaigns.append(
-#             {
-#                 "campaign_id": campaign_id,
-#                 "start_time": row[1],
-#                 "end_time": row[2],
-#                 "total_processed": row[3],
-#                 "successful_sends": row[4],
-#                 "failed_sends": row[5],
-#                 "metrics": metrics,
-#                 "detailed_tracking": tracking,
-#             }
-#         )
-
-#     conn.close()
-#     return campaigns
-
-def get_all_campaigns_from_db():
-    """Get a list of all campaign IDs and their details (including metrics and tracking) from the PostgreSQL database."""
+def get_all_campaigns_from_db(page: int, page_size: int):
+    """Get paginated campaigns from PostgreSQL."""
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
-        # Get basic campaign details
+        offset = (page - 1) * page_size
+
+        # Get total count of campaigns
+        cursor.execute("SELECT COUNT(*) FROM campaigns")
+        total_count = cursor.fetchone()[0]
+
+        # Get paginated campaign details
         cursor.execute(
             """
             SELECT campaign_id, start_time, end_time, total_processed, successful_sends, failed_sends 
             FROM campaigns
-            """
+            ORDER BY start_time DESC
+            LIMIT %s OFFSET %s
+            """,
+            (page_size, offset),
         )
         campaigns_rows = cursor.fetchall()
 
         campaigns = []
         for row in campaigns_rows:
             campaign_id = row[0]
-            print(f"Processing campaign: {campaign_id}")
 
-            # Get metrics for the campaign
+            # Fetch campaign metrics
             cursor.execute("SELECT * FROM metrics WHERE campaign_id = %s", (campaign_id,))
             metrics_row = cursor.fetchone()
 
@@ -1184,24 +1117,6 @@ def get_all_campaigns_from_db():
                 "total_unsubscribes": metrics_row[9] if metrics_row else 0,
             }
 
-            # Get tracking details for the campaign
-            cursor.execute("SELECT * FROM tracking WHERE campaign_id = %s", (campaign_id,))
-            tracking_rows = cursor.fetchall()
-
-            tracking = [
-                {
-                    "email": tracking_row[2],
-                    "sent_time": tracking_row[3],
-                    "opens": tracking_row[4],
-                    "first_opened": tracking_row[5],
-                    "last_opened": tracking_row[6],
-                    "bounced": tracking_row[7],
-                    "replied": tracking_row[8],
-                    "unsubscribed": tracking_row[9],
-                }
-                for tracking_row in tracking_rows
-            ] if tracking_rows else []
-
             campaigns.append(
                 {
                     "campaign_id": campaign_id,
@@ -1211,28 +1126,33 @@ def get_all_campaigns_from_db():
                     "successful_sends": row[4],
                     "failed_sends": row[5],
                     "metrics": metrics,
-                    "detailed_tracking": tracking,
                 }
             )
 
-        return campaigns
+        return campaigns, total_count
 
     except Exception as e:
-        print(f"Error fetching campaign data: {e}")
-        return []
+        print(f"Error fetching campaigns: {e}")
+        return [], 0
 
     finally:
         cursor.close()
         conn.close()
 
+
 @app.get("/all-campaigns/")
-async def get_all_campaigns():
-    """API endpoint to get details of all campaigns."""
+async def get_all_campaigns(page: int = 1, page_size: int = 10):
+    """API endpoint to get paginated campaign details."""
     try:
-        all_campaigns_data = get_all_campaigns_from_db()
-        if not all_campaigns_data:
-            return {"message": "No campaigns found."}
-        return all_campaigns_data
+        all_campaigns_data, total_count = get_all_campaigns_from_db(page, page_size)
+
+        return {
+            "total_campaigns": total_count,
+            "total_pages": (total_count + page_size - 1) // page_size,  # Total pages
+            "current_page": page,
+            "page_size": page_size,
+            "campaigns": all_campaigns_data
+        }
     except Exception as e:
         logger.error(f"Error fetching all campaigns: {str(e)}")
         return {"error": "Failed to retrieve campaign details."}
