@@ -462,7 +462,7 @@ class AIColdEmailAgent:
     def generate_email_content(self, industry, name):
         """Generate personalized email content using AI with rate limiting"""
         
-        prompt = f"""Generate ONLY a JSON object for a cold email. No other text.
+        prompt = f"""Generate ONLY a JSON object for a cold email. No placeholders or dynamic fields should remain. The email should be fully written with complete sentences.
 
         CONTEXT:
         - Industry: {industry}
