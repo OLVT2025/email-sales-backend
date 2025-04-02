@@ -2,6 +2,7 @@ import pandas as pd
 import smtplib
 import json
 import time
+import asyncio
 import logging
 import imaplib
 import email
@@ -823,7 +824,7 @@ async def send_emails(file: UploadFile = File(...), background_tasks: Background
                         logger.error(f"Failed to send email to {row[email_column]}")
                     
                     # Add delay between emails in a batch
-                    time.sleep(2)
+                    await asyncio.sleep(2)
                     
                 except Exception as e:
                     failed_sends += 1
@@ -831,7 +832,7 @@ async def send_emails(file: UploadFile = File(...), background_tasks: Background
                     continue
             
             # Add longer delay between batches
-            time.sleep(30)
+            await asyncio.sleep(30)
         
         # Update campaign statistics
         update_campaign_stats(
